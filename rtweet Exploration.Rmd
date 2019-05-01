@@ -1,0 +1,205 @@
+---
+title: "rtweet Exploration"
+author: "Matthew Hendrickson"
+date: "4/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## rtweet
+
+rtweet (<https://rtweet.info/>) is a R package that makes interacting with Twitter easy. There are a few key interactions that you can perform with rtweet (per the [rtweet site](https://rtweet.info/))
+
+1. Search Tweets
+2. Stream Tweets
+3. Get Friends
+4. Get Timelines
+5. Get Favorites
+6. Search Users
+7. Get Trends
+8. Post Actions
+
+This document explores Tweets from specific users and compares activity across those users.
+
+## Setup
+
+Run this if you haven't installed the required packages.
+
+
+```{r pacakges, message=FALSE, warning=FALSE}
+# Only needed if you haven't arealdy installed the packages
+#install.packages(c("rtweet", "devtools", "tidyverse", "gridExtra", "lubridate))
+
+# Needed to load the packages
+library("rtweet")
+library("devtools")
+library("tidyverse")
+library("gridExtra")
+library("lubridate")
+```
+
+## Connecting to Data
+
+You'll need to set up and authorize the Twitter API. This is explained [here](https://rtweet.info/articles/auth.html).
+
+Once you've completed this task, connect to the Twitter API. The Twitter API limits the number of search results to 18.000 every 15 minutes. Keep this in mind if you're pulling a large amount of data. The rtweet package can help manage this with `retryonratelimit = TRUE`. This command will help manage the search results in accordance with the Twitter API.
+
+Note that I've used `rstudioapi::askForSecret`. This prompt the user to manually type or copy their credentials into RStudio.
+
+```{r connect, eval=FALSE}
+appname <- rstudioapi::askForSecret("Twitter App Name") # name of twitter app
+key     <- rstudioapi::askForSecret("API Key") # api key
+secret  <- rstudioapi::askForSecret("API Secret") # api secret
+token   <- create_token(
+                        app = appname,
+                        consumer_key = key,
+                        consumer_secret = secret)
+```
+
+## Getting Specific Users
+
+Let's pull tweet data for a few users to create a comparison. Let's begin with the R for Data Science community's Tweets [Slack community sign up](bit.ly/R4DSslack), based on this [text](https://r4ds.had.co.nz/). This community is great for anyone wanting to learn more R. has a great learning community, let's begin with the R4DS handle's Tweets.
+
+```{r r4ds data}
+r4ds <- get_timeline(c("R4DScommunity"), n = 5000)
+
+# adjust datestamp to EST from UTC
+r4ds$created_at_est <- r4ds$created_at - 18000 # 5 hours in seconds
+
+# check adjustment
+head(select(r4ds, created_at, created_at_est))
+```
+
+That's it! This gets us the R for Data Science Tweet timeline. Keep in mind the Twitter API 18,000 search results per 15 minutes if you adjust the number of records in the code above (or below).
+
+Now, let's get another users' data. Feel free to swap out another handle (or even yours)!
+
+```{r mjhendrickson data}
+mh <- get_timeline(c("mjhendrickson"), n = 5000)
+
+# adjust datestamp to EST from UTC
+mh$created_at_est <- mh$created_at - 18000 # 5 hours in seconds
+
+# check adjustment
+head(select(mh, created_at, created_at_est))
+```
+
+## Create Comparison Plots
+
+Now that we've pulled together the most recent 9,000 tweets for the two accounts above, let's examine the frequency of Tweets for both.
+
+### R For Data Science's Tweets
+
+I'm assigning the plot to the object `r4ds_plot`, then plotting that object. I'm doing this so I can assemble multiple plots together at the end.
+
+```{r r4ds frequency}
+r4ds_plot <- 
+r4ds %>% 
+  filter(created_at_est >= "2019-01-11") %>% # R4DS handle started 2018-04-14
+ts_plot("days", trim = 1L) +
+  geom_point() +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold")) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Frequency of @R4DScommunity Twitter Statuses",
+    subtitle = "Tweet counts by day since January 1, 2019",
+    caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson"
+  )
+
+r4ds_plot
+```
+
+### My Tweets
+
+Now lets create the plot for the second handle.
+
+```{r mjhendrickson frequency}
+mh_plot <- 
+mh %>% 
+  filter(created_at_est >= "2019-01-01") %>% 
+ts_plot("days", trim = 1L) +
+  geom_point() +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom",
+    plot.title = element_text(face = "bold")) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Frequency of @mjhendrickson Twitter Statuses",
+    subtitle = "Tweet counts by day since January 1, 2019",
+    caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson"
+  )
+
+mh_plot
+```
+
+### Let's put it all together
+
+Here, we blend the two plots together with `gridExtra`. Since the plots were filtered to the same timeframes, we can easily stack the plots to compare Tweet activity across the two handles.
+
+```{r combine plots}
+grid.arrange(r4ds_plot, mh_plot)
+```
+
+Clearly, the R for Data Science handle is much more active than mine!
+
+But it looks like something happened mid-January! Let's find out what I was up to.
+
+## What Happened Mid-January?
+
+Let's start off by getting the Tweet counts by day for January.
+
+```{r day counts}
+mh %>% 
+  filter(created_at_est >= "2019-01-10" & 
+         created_at_est <= "2019-01-20") %>% 
+  group_by(floor_date(created_at_est, unit = "day")) %>% # uses lubridate, rounds to day
+  summarize(n = n())
+```
+
+We can see that January 14th had 31 Tweets! But what were they?
+
+```{r jan 14, paged.print=TRUE}
+# Search the created_at_est field for records starting with "2019-01-14"
+mh_jan_14 <- filter(mh, grepl("2019-01-14", created_at_est, fixed = TRUE))
+# Get the contents of all tweets from 2019-01-15
+select(mh_jan_14, created_at_est, text)
+```
+
+On January 15th, [WeAreRLadies](https://twitter.com/WeAreRLadies) had a thread about sharing resources. I guess I went a little crazy.
+
+## What Else Can We Get?
+
+Reviewing a few records also lets us explore the data we get back from Twitter
+
+```{r dictionary, paged.print=TRUE}
+head(mh)
+```
+
+For a full list of what's included in a data pull like this, go to the Tweet Data Dictionary [here](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html). But of interest to me are:
+
+1. `created_at` = UTC time of Tweet
+2. `text` = content of the Tweet
+3. `source` = utility used to post the Tweet
+4. `reply_to_screen_name` = username of original Tweet's author if the Tweet was a reply
+5. `is_retweet` = TRUE/FALSE if this was a retweet
+6. `favorite_count` = number of times the Tweet was favorited
+7. `retweet_count` = number of times the Tweet was retweeted
+8. `hashtags` = string of all hashtags used
+9. `urls_url` = string of all urls
+10. `mentions_screen_name` = string of screen_names mentioned
+11. A whole host of fields on retweets, such as the user, their follower count, friend count, reach, location (if enabled), text
+12. Geolocation fields, such as place name, coordinates, location
+13. User info, including `followers_count`, `friends_count`, `favorites_count`
+
+### Let's do a quick analysis of a few interesting fields
