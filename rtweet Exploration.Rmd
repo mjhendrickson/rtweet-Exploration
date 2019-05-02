@@ -32,7 +32,6 @@ Run this if you haven't installed the required packages.
 ```{r pacakges, message=FALSE, warning=FALSE}
 # Only needed if you haven't arealdy installed the packages
 #install.packages(c("rtweet", "devtools", "tidyverse", "gridExtra", "lubridate", "kableExtra"))
-
 # Needed to load the packages
 library("rtweet")
 library("devtools")
@@ -64,13 +63,19 @@ token   <- create_token(app = appname,
 Let's pull tweet data for a few users to create a comparison. Let's begin with the R for Data Science community's Tweets [Slack community sign up](bit.ly/R4DSslack), based on this [text](https://r4ds.had.co.nz/). This community is great for anyone wanting to learn more R. has a great learning community, let's begin with the R4DS handle's Tweets.
 
 ```{r r4ds data}
+# See how many times R4DScommunity has Tweeted
+r4ds_count <- get_timeline(c("R4DScommunity"), n = 1)
+r4ds_count$statuses_count # = 2836
+rm(r4ds_count) # Removes r4ds_count dataframe
+# We should have no issue with the 18,000 result limit
+# Get R4DScommunity's Tweets
 r4ds <- get_timeline(c("R4DScommunity"), n = 5000)
-
 # adjust datestamp to EST from UTC
 r4ds$created_at_est <- r4ds$created_at - 18000 # 5 hours in seconds
-
 # check adjustment
 head(select(r4ds, created_at, created_at_est))
+# Save results for future use to avoid having to call Twitter API
+saveRDS(r4ds, "r4ds.rds")
 ```
 
 That's it! This gets us the R for Data Science Tweet timeline. Keep in mind the Twitter API 18,000 search results per 15 minutes if you adjust the number of records in the code above (or below).
@@ -78,13 +83,18 @@ That's it! This gets us the R for Data Science Tweet timeline. Keep in mind the 
 Now, let's get another users' data. Feel free to swap out another handle (or even yours)!
 
 ```{r mjhendrickson data}
+mh_count <- get_timeline(c("mjhendrickson"), n = 1)
+mh_count$statuses_count # = 1419
+rm(mh_count) # Removes r4ds_count dataframe
+# We should have no issue with the 18,000 result limit
+# Get mjhendrickson's Tweets
 mh <- get_timeline(c("mjhendrickson"), n = 5000)
-
 # adjust datestamp to EST from UTC
 mh$created_at_est <- mh$created_at - 18000 # 5 hours in seconds
-
 # check adjustment
 head(select(mh, created_at, created_at_est))
+# Save results for future use to avoid having to call Twitter API
+saveRDS(mh, "mh.rds")
 ```
 
 ## Create Comparison Plots
@@ -98,7 +108,7 @@ I'm assigning the plot to the object `r4ds_plot`, then plotting that object. I'm
 ```{r r4ds frequency}
 r4ds_plot <- 
 r4ds %>% 
-  filter(created_at_est >= "2019-01-11") %>% # R4DS handle started 2018-04-14
+  filter(created_at_est >= "2019-01-01") %>% # R4DS handle started 2018-04-14
 ts_plot("days", trim = 1L) +
   geom_point() +
   theme_minimal() +
@@ -113,7 +123,6 @@ ts_plot("days", trim = 1L) +
     subtitle = "Tweet counts by day since January 1, 2019",
     caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson"
   )
-
 r4ds_plot
 ```
 
@@ -139,7 +148,6 @@ ts_plot("days", trim = 1L) +
     subtitle = "Tweet counts by day since January 1, 2019",
     caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson"
   )
-
 mh_plot
 ```
 
@@ -177,7 +185,7 @@ mh_jan_14 <- filter(mh, grepl("2019-01-14", created_at_est, fixed = TRUE))
 kable(select(mh_jan_14, created_at_est, text))
 ```
 
-On January 15th, [WeAreRLadies](https://twitter.com/WeAreRLadies) had a thread about sharing resources. I guess I went a little crazy.
+On January 14th, [WeAreRLadies](https://twitter.com/WeAreRLadies) had a thread about sharing resources. I guess I went a little crazy.
 
 ## What Else Can We Get?
 
@@ -204,3 +212,65 @@ For a full list of what's included in a data pull like this, go to the Tweet Dat
 * User info, including `followers_count`, `friends_count`, `favorites_count`
 
 ### Let's do a quick analysis of a few interesting fields
+
+#### Tweet Sources
+
+What's my mix of sources? Do I Tweet from my phone? What about desktop?
+
+I'm not going to lie, I'm busy and want a consistent feed to Twitter. So how much do I Tweet through Buffer?
+
+Let's find out.
+
+```{r source}
+mh %>% 
+  group_by(source) %>% 
+  summarize(n = n())
+```
+
+Interesting! I clearly prefer Tweeting from my phone, closely followed by the web client.
+
+I Tweeted just once from my old iPad. That was when I mostly consumed Tweets to stay on top of news during my doctoral program.
+
+I had to search the [Twitter developer pages](https://developer.twitter.com/en/docs/twitter-for-websites/overview.html) to determine the source of `Twitter for Websites`. This will show if you click the Tweet button on a website. Not sure what spurred me to Tweet from any specific website.
+
+```{r source website}
+mh %>% 
+  filter(str_detect(source, "Twitter for Websites")) %>% 
+  select(source, created_at_est, text, urls_expanded_url, mentions_screen_name)
+```
+
+A [Revolution Analytics blog post](https://blog.revolutionanalytics.com/2013/09/statistician-survey-results.html) from September 2013 inspired me to Tweet directly from the page.
+
+#### Preferred Hashtags
+
+Now that I know my preferred method of Tweeting, what do I Tweet about? One way to check is to look at hashtag usage.
+
+```{r hashtags}
+```
+
+#### How do Others Interact with my Tweets?
+
+
+
+```{r }
+```
+
+
+
+#### How long are my Tweets?
+
+```{r length 140}
+mh %>% 
+  #filter(created_at_est >= "2019-01-10") # add filter for pre 280 character limit
+  group_by(display_text_width) %>% 
+  tally(sort = T, wt = NULL)
+```
+
+I liked to push the limits of my Tweets. 140 used to be the character limit. Let's check again to see if that holds _after_ the character limit increase (2017-11-07).
+
+```{r lenght 280}
+mh %>% 
+  filter(created_at_est >= "2017-11-07") %>% 
+  group_by(display_text_width) %>% 
+  tally(sort = T, wt = NULL)
+```
