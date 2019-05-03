@@ -39,6 +39,7 @@ library("tidyverse")
 library("gridExtra")
 library("lubridate")
 library("kableExtra")
+library("scales")
 ```
 
 ## Connecting to Data
@@ -47,7 +48,7 @@ You'll need to set up and authorize the Twitter API. This is explained [here](ht
 
 Once you've completed this task, connect to the Twitter API. The Twitter API limits the number of search results to 18.000 every 15 minutes. Keep this in mind if you're pulling a large amount of data. The rtweet package can help manage this with `retryonratelimit = TRUE`. This command will help manage the search results in accordance with the Twitter API.
 
-Note that I've used `rstudioapi::askForSecret`. This prompt the user to manually type or copy their credentials into RStudio.
+Note that I've used `rstudioapi::askForSecret`. This prompt the user to manually type or copy their credentials into R Studio.
 
 ```{r connect, eval=FALSE}
 appname <- rstudioapi::askForSecret("Twitter App Name") # name of twitter app
@@ -62,40 +63,54 @@ token   <- create_token(app = appname,
 
 Let's pull tweet data for a few users to create a comparison. Let's begin with the R for Data Science community's Tweets [Slack community sign up](bit.ly/R4DSslack), based on this [text](https://r4ds.had.co.nz/). This community is great for anyone wanting to learn more R. has a great learning community, let's begin with the R4DS handle's Tweets.
 
-```{r r4ds data}
+Let's see how many records we need to pull to get the R4DScommunity timeline to ensure we don't approach the 18,000 results limit. First, we'll pull the most recent record and get the value in the `statuses_count` field. The number of statuses is the number of Tweets the account has posted.
+
+```{r r4ds test}
 # See how many times R4DScommunity has Tweeted
-r4ds_count <- get_timeline(c("R4DScommunity"), n = 1)
-r4ds_count$statuses_count # = 2836
-rm(r4ds_count) # Removes r4ds_count dataframe
-# We should have no issue with the 18,000 result limit
+r4ds_count <- get_timeline(c("R4DScommunity"), n = 1) # Get most recent record
+r4ds_count$statuses_count # Get number of Tweets (statuses) = 2843 as of 2019/05/02
+# rm(r4ds_count) # Removes r4ds_count dataframe
+```
+
+We should have no issue with the 18,000 result limit. I've included `retryonratelimit = TRUE` here to illustrate how that looks, though it is unnecessary. Let's now pull all Tweets for the R4DScommunity handle. Adjust the `n = 5000` if necessary depending on the results of the previous call.
+
+```{r r4ds data}
 # Get R4DScommunity's Tweets
-r4ds <- get_timeline(c("R4DScommunity"), n = 5000)
-# adjust datestamp to EST from UTC
+r4ds <- get_timeline(c("R4DScommunity"), n = 5000, retryonratelimit = TRUE)
+# Adjust datestamp to EST from UTC
 r4ds$created_at_est <- r4ds$created_at - 18000 # 5 hours in seconds
-# check adjustment
+# Check adjustment
 head(select(r4ds, created_at, created_at_est))
 # Save results for future use to avoid having to call Twitter API
 saveRDS(r4ds, "r4ds.rds")
 ```
 
+
 That's it! This gets us the R for Data Science Tweet timeline. Keep in mind the Twitter API 18,000 search results per 15 minutes if you adjust the number of records in the code above (or below).
 
 Now, let's get another users' data. Feel free to swap out another handle (or even yours)!
 
-```{r mjhendrickson data}
-mh_count <- get_timeline(c("mjhendrickson"), n = 1)
-mh_count$statuses_count # = 1419
-rm(mh_count) # Removes r4ds_count dataframe
-# We should have no issue with the 18,000 result limit
+Let's check to make sure we won't approach the 18,000 result limit. If we do, simply include `retryonratelimit = TRUE` to have the call pause and restart every 15 minutes.
+
+```{r mh test}
+mh_count <- get_timeline(c("mjhendrickson"), n = 1) # Get most recent record
+mh_count$statuses_count # Get number of Tweets (statuses) = 1425 as of 2019/05/02
+# rm(mh_count) # Removes mh_count dataframe
+```
+
+Again, we will have no issue with the rate limit. Let's pull all Tweets from the handle. Adjust the `n = 5000` if necessary depending on the results of the previous call.
+
+```{r mh data}
 # Get mjhendrickson's Tweets
-mh <- get_timeline(c("mjhendrickson"), n = 5000)
-# adjust datestamp to EST from UTC
+mh <- get_timeline(c("mjhendrickson"), n = 5000, retryonratelimit = TRUE)
+# Adjust datestamp to EST from UTC
 mh$created_at_est <- mh$created_at - 18000 # 5 hours in seconds
-# check adjustment
+# Check adjustment
 head(select(mh, created_at, created_at_est))
 # Save results for future use to avoid having to call Twitter API
 saveRDS(mh, "mh.rds")
 ```
+
 
 ## Create Comparison Plots
 
@@ -153,7 +168,7 @@ mh_plot
 
 ### Let's put it all together
 
-Here, we blend the two plots together with `gridExtra`. Since the plots were filtered to the same timeframes, we can easily stack the plots to compare Tweet activity across the two handles.
+Here, we blend the two plots together with `gridExtra`. Since the plots were filtered to the same time-frames, we can easily stack the plots to compare Tweet activity across the two handles.
 
 ```{r combine plots}
 grid.arrange(r4ds_plot, mh_plot)
@@ -179,9 +194,9 @@ We can see that January 14th had 31 Tweets! But what were they?
 
 ```{r jan 14, paged.print=TRUE}
 # Search the created_at_est field for records starting with "2019-01-14"
+# to get contents of all tweets fro 2019-01-14
 mh_jan_14 <- filter(mh, grepl("2019-01-14", created_at_est, fixed = TRUE))
-# Get the contents of all tweets from 2019-01-15
-# kable is to display emoji, links, etc.
+# kable used here to display emoji, links, etc.
 kable(select(mh_jan_14, created_at_est, text))
 ```
 
@@ -201,13 +216,13 @@ For a full list of what's included in a data pull like this, go to the Tweet Dat
 * `text` = content of the Tweet
 * `source` = utility used to post the Tweet
 * `reply_to_screen_name` = username of original Tweet's author if the Tweet was a reply
-* `is_retweet` = TRUE/FALSE if this was a retweet
+* `is_retweet` = TRUE/FALSE if this was a re-tweet
 * `favorite_count` = number of times the Tweet was favorited
-* `retweet_count` = number of times the Tweet was retweeted
+* `retweet_count` = number of times the Tweet was re-tweeted
 * `hashtags` = string of all hashtags used
 * `urls_url` = string of all urls
 * `mentions_screen_name` = string of screen_names mentioned
-* A whole host of fields on retweets, such as the user, their follower count, friend count, reach, location (if enabled), text
+* A whole host of fields on re-tweets, such as the user, their follower count, friend count, reach, location (if enabled), text
 * Geolocation fields, such as place name, coordinates, location
 * User info, including `followers_count`, `friends_count`, `favorites_count`
 
@@ -227,7 +242,7 @@ mh %>%
   summarize(n = n())
 ```
 
-Interesting! I clearly prefer Tweeting from my phone, closely followed by the web client.
+Interesting! I clearly prefer Tweeting from my phone closely followed by the web client.
 
 I Tweeted just once from my old iPad. That was when I mostly consumed Tweets to stay on top of news during my doctoral program.
 
@@ -250,11 +265,8 @@ Now that I know my preferred method of Tweeting, what do I Tweet about? One way 
 
 #### How do Others Interact with my Tweets?
 
-
-
 ```{r }
 ```
-
 
 
 #### How long are my Tweets?
@@ -263,7 +275,8 @@ Now that I know my preferred method of Tweeting, what do I Tweet about? One way 
 mh %>% 
   #filter(created_at_est >= "2019-01-10") # add filter for pre 280 character limit
   group_by(display_text_width) %>% 
-  tally(sort = T, wt = NULL)
+  #tally(sort = TTRUE, wt = NULL)
+  summarize(n())
 ```
 
 I liked to push the limits of my Tweets. 140 used to be the character limit. Let's check again to see if that holds _after_ the character limit increase (2017-11-07).
@@ -272,5 +285,92 @@ I liked to push the limits of my Tweets. 140 used to be the character limit. Let
 mh %>% 
   filter(created_at_est >= "2017-11-07") %>% 
   group_by(display_text_width) %>% 
-  tally(sort = T, wt = NULL)
+  tally(sort = TRUE, wt = NULL)
 ```
+
+#### Are my Tweets original, or re-Tweets??
+
+```{r retweet}
+mh %>% 
+  group_by(is_retweet) %>% 
+  tally(sort = TRUE, wt = NULL)
+```
+
+Whew! I'm about a 2:1 Tweet:Re-Tweet ratio. Does this vary by source?
+
+```{r retweet source}
+mh %>% 
+  group_by(source, is_retweet) %>% 
+  tally(sort = FALSE, wt = NULL)
+```
+
+I don't re-Tweet through Buffer. Of Tweets from my phone, the majority are re-Tweets. About 3/4 of Tweets from the browser are original.
+
+#### How engaging are my Tweets? Let's start with some simple descriptive stats.
+
+```{r favorited}
+mh %>% 
+  filter(is_retweet == "FALSE") %>% # Keeps only original Tweets
+  summarize(
+    min  =    min(favorite_count), 
+    med  = median(favorite_count), 
+    mean =   mean(favorite_count), 
+    max  =    max(favorite_count), 
+    iqr  =    IQR(favorite_count), 
+    n    =      n()
+  )
+```
+
+Not unexpected. The median is 0, mean is ~3. I had one good tweet at 165!
+
+Let's look at the distribution.
+
+```{r favorited counts}
+mh %>% 
+  filter(is_retweet == "FALSE") %>% # Keeps only original Tweets
+  group_by(favorite_count) %>% 
+  summarize(n = n()) %>% 
+  arrange(desc(favorite_count))
+```
+
+It is clear that very few of my Tweets recieved a large number of likes. If that isn't clear enough, let's visualize the distribution.
+
+```{r favorited dist}
+mh %>% 
+  filter(is_retweet == "FALSE") %>% # Keeps only original Tweets
+ggplot() +
+  geom_bar(mapping = aes(x = favorite_count)) +
+  #scale_x_continuous(name = " ", breaks = c(5, 165)) + # Enable if filtered
+  scale_y_continuous(name = " ", labels = comma) +
+  labs(title = "Distribution of Tweet Favorites",
+       caption = "\n @mjhendrickson")
+```
+
+
+```{r retweeted}
+mh %>% 
+  filter(is_retweet == "FALSE") %>% # Keeps only original Tweets
+  summarize(
+    min  =    min(retweet_count), 
+    med  = median(retweet_count), 
+    mean =   mean(retweet_count), 
+    max  =    max(retweet_count), 
+    iqr  =    IQR(retweet_count), 
+    n    =      n()
+  )
+```
+
+As expected, the numbers are even lower than `favorite_counts`. Though, I did have one with 47 re-Tweets! Let's see if it was the same Tweet.
+
+```{r fav rt}
+
+```
+
+
+
+Now let's look at a combined engagement metric of favorites and re-Tweets.
+
+```{r combo engagement}
+
+```
+
