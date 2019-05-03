@@ -31,7 +31,7 @@ Run this if you haven't installed the required packages.
 
 ```{r pacakges, message=FALSE, warning=FALSE}
 # Only needed if you haven't arealdy installed the packages
-#install.packages(c("rtweet", "devtools", "tidyverse", "gridExtra", "lubridate", "kableExtra"))
+#install.packages(c("rtweet", "devtools", "tidyverse", "gridExtra", "lubridate", "kableExtra", "scales"))
 # Needed to load the packages
 library("rtweet")
 library("devtools")
