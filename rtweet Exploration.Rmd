@@ -68,7 +68,7 @@ Let's see how many records we need to pull to get the R4DScommunity timeline to 
 ```{r r4ds test}
 # See how many times R4DScommunity has Tweeted
 r4ds_count <- get_timeline(c("R4DScommunity"), n = 1) # Get most recent record
-r4ds_count$statuses_count # Get number of Tweets (statuses) = 2843 as of 2019/05/02
+r4ds_count$statuses_count # Get number of Tweets (statuses) = 6073 as of 2020/02/01
 # rm(r4ds_count) # Removes r4ds_count dataframe
 ```
 
@@ -76,7 +76,7 @@ We should have no issue with the 18,000 result limit. I've included `retryonrate
 
 ```{r r4ds data}
 # Get R4DScommunity's Tweets
-r4ds <- get_timeline(c("R4DScommunity"), n = 5000, retryonratelimit = TRUE)
+r4ds <- get_timeline(c("R4DScommunity"), n = 7500, retryonratelimit = TRUE)
 # Adjust datestamp to EST from UTC
 r4ds$created_at_est <- r4ds$created_at - 18000 # 5 hours in seconds
 # Check adjustment
@@ -94,7 +94,7 @@ Let's check to make sure we won't approach the 18,000 result limit. If we do, si
 
 ```{r mh test}
 mh_count <- get_timeline(c("mjhendrickson"), n = 1) # Get most recent record
-mh_count$statuses_count # Get number of Tweets (statuses) = 1425 as of 2019/05/02
+mh_count$statuses_count # Get number of Tweets (statuses) = 1723 as of 2020/02/01
 # rm(mh_count) # Removes mh_count dataframe
 ```
 
@@ -242,9 +242,11 @@ mh %>%
   summarize(n = n())
 ```
 
-Interesting! I clearly prefer Tweeting from my phone closely followed by the web client.
+Interesting! I clearly prefer Tweeting from my phone, then by the web client & app.
 
 I Tweeted just once from my old iPad. That was when I mostly consumed Tweets to stay on top of news during my doctoral program.
+
+You can also see that I use [Buffer](https://buffer.com/) as a means to schedule Tweets.
 
 I had to search the [Twitter developer pages](https://developer.twitter.com/en/docs/twitter-for-websites/overview.html) to determine the source of `Twitter for Websites`. This will show if you click the Tweet button on a website. Not sure what spurred me to Tweet from any specific website.
 
@@ -304,7 +306,7 @@ mh %>%
   tally(sort = FALSE, wt = NULL)
 ```
 
-I don't re-Tweet through Buffer. Of Tweets from my phone, the majority are re-Tweets. About 3/4 of Tweets from the browser are original.
+I don't re-Tweet through Buffer. Of Tweets from my phone, the majority are re-Tweets. The majority of my Tweets from the browser are original.
 
 #### How engaging are my Tweets? Let's start with some simple descriptive stats.
 
@@ -321,7 +323,7 @@ mh %>%
   )
 ```
 
-Not unexpected. The median is 0, mean is ~3. I had one good tweet at 165!
+Not unexpected. The median is 0, mean is ~3. I had one good tweet at 164!
 
 Let's look at the distribution.
 
@@ -363,14 +365,18 @@ mh %>%
 As expected, the numbers are even lower than `favorite_counts`. Though, I did have one with 47 re-Tweets! Let's see if it was the same Tweet.
 
 ```{r fav rt}
-
+mh %>% 
+  filter(is_retweet == "FALSE" & retweet_count == '47') # Keeps original Tweets retweeted 47x
 ```
 
 
 
 Now let's look at a combined engagement metric of favorites and re-Tweets.
 
-```{r combo engagement}
+```{r engagement calculation}
+mh$engagement <- mh$favorite_count + mh$retweet_count # Add favorites + retweets
+head(mh[,c("favorite_count",'retweet_count',"engagement")]) # Check calculation
 
+# filter(favorite_count != 0 & retweet_count != 0) # Error filter_
 ```
 
