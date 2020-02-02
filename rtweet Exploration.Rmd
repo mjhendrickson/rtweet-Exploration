@@ -11,7 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## rtweet
 
-rtweet (<https://rtweet.info/>) is a R package that makes interacting with Twitter easy. There are a few key interactions that you can perform with rtweet (per the [rtweet site](https://rtweet.info/))
+rtweet (<https://rtweet.info/>) is a R package that makes interacting with Twitter easy.
+There are a few key interactions that you can perform with rtweet (per the [rtweet site](https://rtweet.info/))
 
 1. Search Tweets
 2. Stream Tweets
@@ -46,9 +47,14 @@ library("scales")
 
 You'll need to set up and authorize the Twitter API. This is explained [here](https://rtweet.info/articles/auth.html).
 
-Once you've completed this task, connect to the Twitter API. The Twitter API limits the number of search results to 18.000 every 15 minutes. Keep this in mind if you're pulling a large amount of data. The rtweet package can help manage this with `retryonratelimit = TRUE`. This command will help manage the search results in accordance with the Twitter API.
+Once you've completed this task, connect to the Twitter API.
+The Twitter API limits the number of search results to 18.000 every 15 minutes.
+Keep this in mind if you're pulling a large amount of data.
+The rtweet package can help manage this with `retryonratelimit = TRUE`.
+This command will help manage the search results in accordance with the Twitter API.
 
-Note that I've used `rstudioapi::askForSecret`. This prompt the user to manually type or copy their credentials into R Studio.
+Note that I've used `rstudioapi::askForSecret`.
+This prompt the user to manually type or copy their credentials into R Studio.
 
 ```{r connect, eval=FALSE}
 appname <- rstudioapi::askForSecret("Twitter App Name") # name of twitter app
@@ -61,9 +67,14 @@ token   <- create_token(app = appname,
 
 ## Getting Specific Users
 
-Let's pull tweet data for a few users to create a comparison. Let's begin with the R for Data Science community's Tweets [Slack community sign up](bit.ly/R4DSslack), based on this [text](https://r4ds.had.co.nz/). This community is great for anyone wanting to learn more R. has a great learning community, let's begin with the R4DS handle's Tweets.
+Let's pull tweet data for a few users to create a comparison.
+Let's begin with the R for Data Science community's Tweets [Slack community sign up](bit.ly/R4DSslack), based on this [text](https://r4ds.had.co.nz/).
+This community is great for anyone wanting to learn more R.
+Let's begin with the R4DS handle's Tweets.
 
-Let's see how many records we need to pull to get the R4DScommunity timeline to ensure we don't approach the 18,000 results limit. First, we'll pull the most recent record and get the value in the `statuses_count` field. The number of statuses is the number of Tweets the account has posted.
+Let's see how many records we need to pull to get the R4DScommunity timeline to ensure we don't approach the 18,000 results limit.
+First, we'll pull the most recent record and get the value in the `statuses_count` field.
+The number of statuses is the number of Tweets the account has posted.
 
 ```{r r4ds test}
 # See how many times R4DScommunity has Tweeted
@@ -72,7 +83,10 @@ r4ds_count$statuses_count # Get number of Tweets (statuses) = 6073 as of 2020/02
 # rm(r4ds_count) # Removes r4ds_count dataframe
 ```
 
-We should have no issue with the 18,000 result limit. I've included `retryonratelimit = TRUE` here to illustrate how that looks, though it is unnecessary. Let's now pull all Tweets for the R4DScommunity handle. Adjust the `n = 5000` if necessary depending on the results of the previous call.
+We should have no issue with the 18,000 result limit.
+I've included `retryonratelimit = TRUE` here to illustrate how that looks, though it is unnecessary.
+Let's now pull all Tweets for the R4DScommunity handle.
+Adjust the `n = 5000` if necessary depending on the results of the previous call.
 
 ```{r r4ds data}
 # Get R4DScommunity's Tweets
@@ -86,11 +100,13 @@ saveRDS(r4ds, "r4ds.rds")
 ```
 
 
-That's it! This gets us the R for Data Science Tweet timeline. Keep in mind the Twitter API 18,000 search results per 15 minutes if you adjust the number of records in the code above (or below).
+That's it! This gets us the R for Data Science Tweet timeline.
+Keep in mind the Twitter API 18,000 search results per 15 minutes if you adjust the number of records in the code above (or below).
 
 Now, let's get another users' data. Feel free to swap out another handle (or even yours)!
 
-Let's check to make sure we won't approach the 18,000 result limit. If we do, simply include `retryonratelimit = TRUE` to have the call pause and restart every 15 minutes.
+Let's check to make sure we won't approach the 18,000 result limit.
+If we do, simply include `retryonratelimit = TRUE` to have the call pause and restart every 15 minutes.
 
 ```{r mh test}
 mh_count <- get_timeline(c("mjhendrickson"), n = 1) # Get most recent record
@@ -98,7 +114,9 @@ mh_count$statuses_count # Get number of Tweets (statuses) = 1723 as of 2020/02/0
 # rm(mh_count) # Removes mh_count dataframe
 ```
 
-Again, we will have no issue with the rate limit. Let's pull all Tweets from the handle. Adjust the `n = 5000` if necessary depending on the results of the previous call.
+Again, we will have no issue with the rate limit.
+Let's pull all Tweets from the handle.
+Adjust the `n = 5000` if necessary depending on the results of the previous call.
 
 ```{r mh data}
 # Get mjhendrickson's Tweets
@@ -118,7 +136,8 @@ Now that we've pulled together the most recent 9,000 tweets for the two accounts
 
 ### R For Data Science's Tweets
 
-I'm assigning the plot to the object `r4ds_plot`, then plotting that object. I'm doing this so I can assemble multiple plots together at the end.
+I'm assigning the plot to the object `r4ds_plot`, then plotting that object.
+I'm doing this so I can assemble multiple plots together at the end.
 
 ```{r r4ds frequency}
 r4ds_plot <- 
@@ -168,7 +187,8 @@ mh_plot
 
 ### Let's put it all together
 
-Here, we blend the two plots together with `gridExtra`. Since the plots were filtered to the same time-frames, we can easily stack the plots to compare Tweet activity across the two handles.
+Here, we blend the two plots together with `gridExtra`.
+Since the plots were filtered to the same time-frames, we can easily stack the plots to compare Tweet activity across the two handles.
 
 ```{r combine plots}
 grid.arrange(r4ds_plot, mh_plot)
@@ -200,17 +220,19 @@ mh_jan_14 <- filter(mh, grepl("2019-01-14", created_at_est, fixed = TRUE))
 kable(select(mh_jan_14, created_at_est, text))
 ```
 
-On January 14th, [WeAreRLadies](https://twitter.com/WeAreRLadies) had a thread about sharing resources. I guess I went a little crazy.
+On January 14th, [WeAreRLadies](https://twitter.com/WeAreRLadies) had a thread about sharing resources.
+I guess I went a little crazy.
 
 ## What Else Can We Get?
 
-Reviewing a few records also lets us explore the data we get back from Twitter
+Reviewing a few records also lets us explore the data we get back from Twitter.
 
 ```{r dictionary, paged.print=TRUE}
 colnames(mh)
 ```
 
-For a full list of what's included in a data pull like this, go to the Tweet Data Dictionary [here](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html). But of interest to me are:
+For a full list of what's included in a data pull like this, go to the Tweet Data Dictionary [here](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html).
+But of interest to me are:
 
 * `created_at` = UTC time of Tweet
 * `text` = content of the Tweet
@@ -232,7 +254,8 @@ For a full list of what's included in a data pull like this, go to the Tweet Dat
 
 What's my mix of sources? Do I Tweet from my phone? What about desktop?
 
-I'm not going to lie, I'm busy and want a consistent feed to Twitter. So how much do I Tweet through Buffer?
+I'm not going to lie, I'm busy and want a consistent feed to Twitter.
+So how much do I Tweet through Buffer?
 
 Let's find out.
 
@@ -248,7 +271,8 @@ I Tweeted just once from my old iPad. That was when I mostly consumed Tweets to 
 
 You can also see that I use [Buffer](https://buffer.com/) as a means to schedule Tweets.
 
-I had to search the [Twitter developer pages](https://developer.twitter.com/en/docs/twitter-for-websites/overview.html) to determine the source of `Twitter for Websites`. This will show if you click the Tweet button on a website. Not sure what spurred me to Tweet from any specific website.
+I had to search the [Twitter developer pages](https://developer.twitter.com/en/docs/twitter-for-websites/overview.html) to determine the source of `Twitter for Websites`.
+This will show if you click the Tweet button on a website. Not sure what spurred me to Tweet from any specific website.
 
 ```{r source website}
 mh %>% 
@@ -260,7 +284,8 @@ A [Revolution Analytics blog post](https://blog.revolutionanalytics.com/2013/09/
 
 #### Preferred Hashtags
 
-Now that I know my preferred method of Tweeting, what do I Tweet about? One way to check is to look at hashtag usage.
+Now that I know my preferred method of Tweeting, what do I Tweet about?
+One way to check is to look at hashtag usage.
 
 ```{r hashtags}
 ```
@@ -281,7 +306,8 @@ mh %>%
   summarize(n())
 ```
 
-I liked to push the limits of my Tweets. 140 used to be the character limit. Let's check again to see if that holds _after_ the character limit increase (2017-11-07).
+I liked to push the limits of my Tweets. 140 used to be the character limit.
+Let's check again to see if that holds _after_ the character limit increase (2017-11-07).
 
 ```{r lenght 280}
 mh %>% 
@@ -306,7 +332,8 @@ mh %>%
   tally(sort = FALSE, wt = NULL)
 ```
 
-I don't re-Tweet through Buffer. Of Tweets from my phone, the majority are re-Tweets. The majority of my Tweets from the browser are original.
+I don't re-Tweet through Buffer. Of Tweets from my phone, the majority are re-Tweets.
+The majority of my Tweets from the browser are original.
 
 #### How engaging are my Tweets? Let's start with some simple descriptive stats.
 
@@ -335,7 +362,8 @@ mh %>%
   arrange(desc(favorite_count))
 ```
 
-It is clear that very few of my Tweets recieved a large number of likes. If that isn't clear enough, let's visualize the distribution.
+It is clear that very few of my Tweets recieved a large number of likes.
+If that isn't clear enough, let's visualize the distribution.
 
 ```{r favorited dist}
 mh %>% 
@@ -362,7 +390,9 @@ mh %>%
   )
 ```
 
-As expected, the numbers are even lower than `favorite_counts`. Though, I did have one with 47 re-Tweets! Let's see if it was the same Tweet.
+As expected, the numbers are even lower than `favorite_counts`.
+Though, I did have one with 47 re-Tweets!
+Let's see if it was the same Tweet.
 
 ```{r fav rt}
 mh %>% 
