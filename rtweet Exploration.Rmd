@@ -1,7 +1,7 @@
 ---
 title: "rtweet Exploration"
 author: "Matthew Hendrickson"
-date: "2/1/2020"
+date: "2/9/2020"
 output: html_document
 ---
 
@@ -56,7 +56,7 @@ This command will help manage the search results in accordance with the Twitter 
 Note that I've used `rstudioapi::askForSecret`.
 This prompt the user to manually type or copy their credentials into R Studio.
 
-```{r connect, eval=FALSE}
+```{r connect, echo=FALSE, eval=FALSE}
 appname <- rstudioapi::askForSecret("Twitter App Name") # name of twitter app
 key     <- rstudioapi::askForSecret("API Key") # api key
 secret  <- rstudioapi::askForSecret("API Secret") # api secret
@@ -79,14 +79,14 @@ The number of statuses is the number of Tweets the account has posted.
 ```{r r4ds test}
 # See how many times R4DScommunity has Tweeted
 r4ds_count <- get_timeline(c("R4DScommunity"), n = 1) # Get most recent record
-r4ds_count$statuses_count # Get number of Tweets (statuses) = 6073 as of 2020/02/01
+r4ds_count$statuses_count # Get number of Tweets (statuses) = 6162 as of 2020/02/09
 # rm(r4ds_count) # Removes r4ds_count dataframe
 ```
 
 We should have no issue with the 18,000 result limit.
 I've included `retryonratelimit = TRUE` here to illustrate how that looks, though it is unnecessary.
 Let's now pull all Tweets for the R4DScommunity handle.
-Adjust the `n = 5000` if necessary depending on the results of the previous call.
+Adjust the `n = 7500` if necessary depending on the results of the previous call.
 
 ```{r r4ds data}
 # Get R4DScommunity's Tweets
@@ -99,7 +99,6 @@ head(select(r4ds, created_at, created_at_est))
 saveRDS(r4ds, "r4ds.rds")
 ```
 
-
 That's it! This gets us the R for Data Science Tweet timeline.
 Keep in mind the Twitter API 18,000 search results per 15 minutes if you adjust the number of records in the code above (or below).
 
@@ -110,17 +109,17 @@ If we do, simply include `retryonratelimit = TRUE` to have the call pause and re
 
 ```{r mh test}
 mh_count <- get_timeline(c("mjhendrickson"), n = 1) # Get most recent record
-mh_count$statuses_count # Get number of Tweets (statuses) = 1723 as of 2020/02/01
+mh_count$statuses_count # Get number of Tweets (statuses) = 1736 as of 2020/02/09
 # rm(mh_count) # Removes mh_count dataframe
 ```
 
 Again, we will have no issue with the rate limit.
 Let's pull all Tweets from the handle.
-Adjust the `n = 5000` if necessary depending on the results of the previous call.
+Adjust the `n = 7500` if necessary depending on the results of the previous call.
 
 ```{r mh data}
 # Get mjhendrickson's Tweets
-mh <- get_timeline(c("mjhendrickson"), n = 5000, retryonratelimit = TRUE)
+mh <- get_timeline(c("mjhendrickson"), n = 7500, retryonratelimit = TRUE)
 # Adjust datestamp to EST from UTC
 mh$created_at_est <- mh$created_at - 18000 # 5 hours in seconds
 # Check adjustment
@@ -128,7 +127,6 @@ head(select(mh, created_at, created_at_est))
 # Save results for future use to avoid having to call Twitter API
 saveRDS(mh, "mh.rds")
 ```
-
 
 ## Create Comparison Plots
 
@@ -142,7 +140,7 @@ I'm doing this so I can assemble multiple plots together at the end.
 ```{r r4ds frequency}
 r4ds_plot <- 
 r4ds %>% 
-  filter(created_at_est >= "2019-01-01") %>% # R4DS handle started 2018-04-14
+  filter(created_at_est >= "2018-04-14") %>% # R4DS handle started 2018-04-14
 ts_plot("days", trim = 1L) +
   geom_point() +
   theme_minimal() +
@@ -154,7 +152,7 @@ ts_plot("days", trim = 1L) +
     x = NULL,
     y = NULL,
     title = "Frequency of @R4DScommunity Twitter Statuses",
-    subtitle = "Tweet counts by day since January 1, 2019",
+    subtitle = "Tweet counts by day since April 14, 2018",
     caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson"
   )
 r4ds_plot
@@ -167,7 +165,7 @@ Now lets create the plot for the second handle.
 ```{r mjhendrickson frequency}
 mh_plot <- 
 mh %>% 
-  filter(created_at_est >= "2019-01-01") %>% 
+  filter(created_at_est >= "2018-04-14") %>% # R4DS handle started 2018-04-14
 ts_plot("days", trim = 1L) +
   geom_point() +
   theme_minimal() +
@@ -179,7 +177,7 @@ ts_plot("days", trim = 1L) +
     x = NULL,
     y = NULL,
     title = "Frequency of @mjhendrickson Twitter Statuses",
-    subtitle = "Tweet counts by day since January 1, 2019",
+    subtitle = "Tweet counts by day since April 14, 2018",
     caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson"
   )
 mh_plot
@@ -287,7 +285,13 @@ A [Revolution Analytics blog post](https://blog.revolutionanalytics.com/2013/09/
 Now that I know my preferred method of Tweeting, what do I Tweet about?
 One way to check is to look at hashtag usage.
 
+Let's start by exploring the hashtag field.
+
 ```{r hashtags}
+mh_hashtags <- na.omit(mh$hashtags)
+head(mh_hashtags)
+mh_hashtags <- mh_hashtags[!is.na(mh_hashtags)]
+head(mh_hashtags)
 ```
 
 #### How do Others Interact with my Tweets?
