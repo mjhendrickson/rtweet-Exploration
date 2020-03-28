@@ -1,0 +1,294 @@
+---
+title: "An Introduction to rtweet: <br> Getting & Analyzing Data <br> from the Twitter API"
+subtitle: "SatRdaysDC"
+author: "Matthew Hendrickson"
+date: "2020/03/28"
+output:
+  ioslides_presentation:
+    widescreen: true
+    incremental: true
+    fig_width: 9
+    fig_height: 3
+    df_print: paged
+#logo: images/rtweet.png # Shows on all slides
+---
+
+```{r setup, include = FALSE, echo = FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE, comment = "#>", collapse = TRUE)
+```
+
+## Topics
+1. About Me
+2. rtweet
+3. The Twitter API
+4. `search_tweets()`
+5. `get_trends()`
+6. `stream_tweets()`
+7. Social Network Analysis - `get_friends() get_followers()`
+8. `get_timelines()`
+9. `get_favorites()`
+10. But wait! There's more!
+
+
+
+## About Me
+<div style="float: left; width: 50%;">
+<img src = "images/headshot.png" width="450" height="450">
+</div>
+
+<div style="float: left; width: 50%;">
+- Social Scientist by Training
+     - Psychology & Music `%>%`
+     - More Psychlogy `%>%`
+     - Law & Policy
+- Higher Education Analyst by Trade
+- R User by Stumbling
+     - Excel `%>%`
+     - SPSS GUI `%>%`
+     - SPSS Syntax `%>%`
+     - SQL `%>%`
+     - R
+</div>
+
+
+
+## rtweet
+<div style="float: left; width: 50%;">
+<img src = "images/rtweet.png" width="450" height="450">
+</div>
+
+<div style="float: left; width: 50%;">
+- [rtweet Vignette - https://rtweet.info/](https://rtweet.info/)
+- Developed & maintained by [\@kearneymw](https://twitter.com/kearneymw)
+- An implementation of calls designed to collect and organize Twitter 
+data via Twitter's REST and stream Application Program Interfaces (API), 
+which can be found at the following URL:  
+<https://developer.twitter.com/en/docs>.
+</div>
+
+
+## The Twitter API
+- No longer need a Twitter developer account
+     - Walthrough [available](https://rtweet.info/articles/auth.html) for developer accounts
+- You _*DO*_ need a Twitter account
+- Authorize API by calling an `rtweet` function like `search_tweets()`
+- Twitter API limits 18,000 results / 15 min
+     - `retryonratelimit = TRUE`
+- Must be used in accordance with [Twitter's developer terms](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object)
+
+
+
+```{r environment setup, echo = FALSE, message = FALSE, warning = FALSE, eval = TRUE}
+library("rtweet")    # Needed to get data from Twitter
+library("httpuv")    # Needed to use rtweet without developer account
+library("tidyverse") # Data manipulation and visualization
+library("scales")    # Customize axes
+library("UpSetR")    # To create upset plot
+library("igraph")    # For SNA
+```
+
+
+
+## Tweeting with rtweet
+```{r tweeeting, echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE}
+post_tweet(
+  status = "Hey @Satrdays_DC, did you know you can 
+            post a Tweet directly from #rstats?",
+  media = "images/no_way.gif"
+)
+```
+
+<center><img src = "images/no_way.gif" width="500" height="279"></center>
+<center><font size="2">[https://memecrunch.com/meme/C0QML/no-way](https://memecrunch.com/meme/C0QML/no-way)</font></center>
+
+
+
+
+## `search_tweets()` {.smaller}
+```{r search tweets, echo = TRUE, message = FALSE, warning = FALSE, eval = TRUE}
+search_tweets("#rladies", n = 5000, include_rts = FALSE) %>% 
+ts_plot("days", trim = 1L) +
+  geom_point() + theme_minimal() +
+  theme(plot.title = element_text(face = "bold")) +
+  labs(x = NULL,  y = NULL,
+    title = "Frequency of #rladies Twitter Hashtag Usage",
+    caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson")
+```
+
+
+
+## `get_trends()` {.smaller}
+``` {r trends, echo = TRUE, message = FALSE, warning = FALSE, eval = TRUE}
+get_trends("washington") %>% # trends_available() to see locales
+  top_n(3, tweet_volume) %>% # Pull top 3 trends by volume
+ggplot() +
+  geom_bar(mapping = aes(x = reorder(trend, -tweet_volume), y = tweet_volume), stat = "identity") +
+  scale_y_continuous(labels = comma) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) +
+  labs(title = "Washington DC Twitter Trends",
+       caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson")
+```
+
+
+
+## `stream_tweets()` {.smaller}
+```{r stream tweets, echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE}
+rstats <- stream_tweets("rstats", timeout = 60 * 60) # = 60 min
+rstats %>%
+ts_plot("mins", trim = 1L) +
+  geom_point() + theme_minimal() +
+  theme(plot.title = element_text(face = "bold")) +
+  labs(x = NULL,  y = NULL,
+    title = "Frequency of #rstats Twitter Mentions",
+    caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson")
+```
+
+<center><img src = "images/plot_rstats_stream.png" width="500" height="279"></center>
+
+
+
+## Social Network Analysis {.smaller}
+``` {r sna, echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE}
+# Get list of friends
+friends        <- get_friends(c("mjhendrickson", "kearneymw", "LittleMissData", "AnnaHenschel"))
+
+# Get screen names for friends
+friends_names  <- lookup_users(friends$user_id)
+
+# Add screen names to friends data
+friends_list   <- left_join(friends, friends_names)
+friends_list   <- friends_list[, c("user", "screen_name")]
+
+# Count of accounts followed by users
+friends_data   <- table(friends_list$screen_name)
+
+# User overlap
+friends_trim   <- subset(friends_list, screen_name %in% names(friends_data[friends_data >2L]))
+
+# Create matrix
+friends_matrix <- as.matrix(friends_trim)
+
+# Plot SNA
+plot(graph_from_edgelist(friends_matrix), vertex.color = "grey", vertex.label.color = "black", 
+     vertex.label.cex = .75, edge.curved = .25, edge.color = "grey20", arrow.size = 5, arrow.width = .25)
+```
+
+
+
+## Social Network Analysis Output
+<center><img src = "images/plot_sna.png"></center>
+
+
+
+## `get_timelines()` {.smaller}
+``` {r timelines, echo = TRUE, message = FALSE, warning = FALSE, eval = TRUE}
+get_timelines(c("dataandme", "thomas_mock", "CMastication"), n = 5000) %>%
+  filter(created_at > "2020-01-01") %>% group_by(screen_name) %>% 
+ts_plot("days", trim = 1L) +
+  geom_point() + theme_minimal() +
+  theme(legend.position = "bottom",
+    plot.title = element_text(face = "bold")) +
+  labs(x = NULL, y = NULL,
+    title = "Frequency of Tweets by Cool #rstats Twitter Folks",
+    caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson")
+```
+
+
+
+## `get_favorites()` {.smaller}
+``` {r favorites, echo = TRUE, message = FALSE, warning = FALSE, eval = TRUE}
+hadley_favs <- get_favorites('hadleywickham', n = 1000)
+hadley_fav_count <- hadley_favs %>% group_by(screen_name) %>% summarize(n = n()) %>% arrange(desc(n))
+hadley_fav_count %>% top_n(5, n) %>%
+ggplot() +
+  geom_col(mapping = aes(x = fct_reorder(screen_name, -n), y = n)) +
+  scale_y_continuous(labels = comma) +
+  theme(axis.title.x = element_blank()) +
+  theme(axis.title.y = element_blank()) +
+  labs(title = "Users Hadley Most Recently Favorited by Count",
+       caption = "\nSource: Data collected via rtweet - graphic by @mjhendrickson")
+```
+
+
+
+## Upset Plot {.smaller}
+``` {r upset, echo = TRUE, message = FALSE, warning = FALSE, eval = FALSE}
+# Credit to @PaulCampbell91 for the borrowed code
+rstaters <- c("mjhendrickson", "CMastication", "thomas_mock", "kearneymw", "LittleMissData", "AnnaHenschel")
+
+followers_upset <- map_df(rstaters, ~ get_followers(.x, n=100000, retryonratelimit = TRUE) %>%
+                          mutate(account = .x))
+
+aRdent_followers <- unique(followers_upset$user_id)
+
+binaries <- rstaters %>%
+  map_dfc(~ ifelse(aRdent_followers %in% filter(followers_upset, account == .x)$user_id, 1, 0) %>% 
+            as.data.frame)
+
+names(binaries) <- rstaters
+
+upset(binaries, 
+      nsets = 6, 
+      main.bar.color = "SteelBlue", 
+      sets.bar.color = "DarkCyan", 
+      sets.x.label = "Follower Count", 
+      text.scale = c(rep(1.4, 5), 1), 
+      order.by = "freq")
+```
+
+
+
+## Upset Plot
+<center><img src = "images/plot_upsetr.png" width="750" height="419"></center>
+
+
+
+## But wait - there's more! {.smaller}
+For a full list of what's included in the data pull, go to the [Tweet Data Dictionary](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html)
+
+A few of interest:
+
+- `created_at` = UTC time of Tweet
+- `text` = content of the Tweet
+- `source` = utility used to post the Tweet
+- `is_retweet` = TRUE/FALSE if this was a re-tweet
+- `favorite_count` = number of times the Tweet was favorited
+- `retweet_count` = number of times the Tweet was re-tweeted
+- `hashtags` = string of all hashtags used
+- `urls_url` = string of all urls
+- `mentions_screen_name` = string of screen_names mentioned
+- Fields on re-tweets, geolocation, user info
+
+
+
+## All available fields {.smaller}
+``` {r dictionary, echo = TRUE, message = FALSE, warning = FALSE, eval = TRUE}
+as_tibble(colnames(search_tweets("#rladies", n = 1, include_rts = FALSE)))
+```
+
+
+
+# Thank you
+<img src = "images/twitter.png" width="30" height="30">  [\@mjhendrickson](https://twitter.com/mjhendrickson)
+
+<img src = "images/linkedin.png" width="30" height="30">  [matthewjhendrickson](https://www.linkedin.com/in/matthewjhendrickson/)
+
+<img src = "images/github.png" width="30" height="30">  [mjhendrickson](https://github.com/mjhendrickson)
+
+
+This talk is freely distributed under the MIT License.  
+(So is rtweet!)
+
+
+
+## References {.smaller}
+- Kearney MW (2019). "rtweet: Collecting and analyzing Twitter data." Journal of Open Source Software, 4(42), 1829. doi: 10.21105/joss.01829, R package version 0.7.0, [https://joss.theoj.org/papers/10.21105/joss.01829](https://joss.theoj.org/papers/10.21105/joss.01829).
+- Rudis, B (2018). "21 Recipes for Mining Twitter with rtweet" [https://rud.is/books/21-recipes/](https://rud.is/books/21-recipes/)
+- Ellis, Laura (2019). "Set Analysis: A face off between Venn diagrams and UpSet plots." [https://www.littlemissdata.com/blog/set-analysis](https://www.littlemissdata.com/blog/set-analysis)
+- Kearney MW (2018). "R: Collecting and Analyzing Twitter Data." - Specifically Slide 36 on SNA. [https://github.com/mkearney/nicar_tworkshop](https://github.com/mkearney/nicar_tworkshop)
+- Headshot by [Maureen Porto Photography](https://www.maureenporto.com/)
+- No way gif by [https://memecrunch.com/meme/C0QML/no-way](https://memecrunch.com/meme/C0QML/no-way)
+- Social media icons by [https://iconmonstr.com/](https://iconmonstr.com/)
+- Twitter Data Dictionary [https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object.html)
+
