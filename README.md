@@ -6,4 +6,4 @@ The .html file will not render as a true .html file in GitHub (I'm open to recom
 
 Initial exploration began [here](https://gist.github.com/mjhendrickson/bf85e176dbb387231d65880036d66097)
 
-SatRdaysDC 2020 presentation available [here](https://bit.ly/satRday2020mh)
+[SatRdaysDC](https://twitter.com/Satrdays_DC) 2020 presentation available [here](https://bit.ly/satRday2020mh)
